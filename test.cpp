@@ -247,6 +247,10 @@ JSON11_TEST_CASE(json11_test) {
     JSON11_TEST_ASSERT(points_json == "[[1, 2], [10, 20], [100, 200]]");
 
     const std::string int64JsonStr = R"({
+"int_max": 2147483647,
+"int_min": -2147483648,
+"uint_max": 4294967295,
+"uint_min": 0,
 "int64_max":  9223372036854775807,
 "int64_min": -9223372036854775808,
 "uint64_max": 18446744073709551615,
@@ -256,11 +260,15 @@ JSON11_TEST_CASE(json11_test) {
     err.empty();
     Json int64Json = Json::parse(int64JsonStr, err);
     std::cout << "int64Json: " << int64Json.dump() << "\n";
-    JSON11_TEST_ASSERT(int64Json.dump() == "{\"int64_max\": 9223372036854775807, \"int64_min\": -9223372036854775808, \"uint64_max\": 18446744073709551615, \"uint64_min\": 0}");
-    JSON11_TEST_ASSERT(int64Json["int64_max"].int64_value() == INT64_MAX);
-    JSON11_TEST_ASSERT(int64Json["int64_min"].int64_value() == INT64_MIN);
-    JSON11_TEST_ASSERT(int64Json["uint64_max"].uint64_value() == UINT64_MAX);
-    JSON11_TEST_ASSERT(int64Json["uint64_min"].uint64_value() == 0);
+    assert(int64Json.dump() == "{\"int64_max\": 9223372036854775807, \"int64_min\": -9223372036854775808, \"int_max\": 2147483647, \"int_min\": -2147483648, \"uint64_max\": 18446744073709551615, \"uint64_min\": 0, \"uint_max\": 4294967295, \"uint_min\": 0}");
+    assert(int64Json["int_max"].int_value() == INT_MAX);
+    assert(int64Json["int_min"].int_value() == INT_MIN);
+    assert(int64Json["uint_max"].uint64_value() == UINT_MAX);
+    assert(int64Json["uint_min"].uint64_value() == 0);
+    assert(int64Json["int64_max"].int64_value() == INT64_MAX);
+    assert(int64Json["int64_min"].int64_value() == INT64_MIN);
+    assert(int64Json["uint64_max"].uint64_value() == UINT64_MAX);
+    assert(int64Json["uint64_min"].uint64_value() == 0);
 }
 
 #if JSON11_TEST_STANDALONE_MAIN
