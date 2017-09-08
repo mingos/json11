@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <limits>
+#include <sstream>
 
 namespace json11 {
 
@@ -68,6 +69,18 @@ static void dump(int value, string &out) {
     char buf[32];
     snprintf(buf, sizeof buf, "%d", value);
     out += buf;
+}
+
+static void dump(int64_t value, string &out) {
+    std::stringstream ss;
+    ss << value;
+    out += ss.str();
+}
+
+static void dump(uint64_t value, string &out) {
+    std::stringstream ss;
+    ss << value;
+    out += ss.str();
 }
 
 static void dump(bool value, string &out) {
@@ -173,6 +186,8 @@ protected:
 class JsonDouble final : public Value<Json::NUMBER, double> {
     double number_value() const override { return m_value; }
     int int_value() const override { return static_cast<int>(m_value); }
+    int64_t int64_value() const override { return static_cast<int64_t>(m_value); }
+    uint64_t uint64_value() const override { return static_cast<uint64_t>(m_value); }
     bool equals(const JsonValue * other) const override { return m_value == other->number_value(); }
     bool less(const JsonValue * other)   const override { return m_value <  other->number_value(); }
 public:
@@ -182,10 +197,34 @@ public:
 class JsonInt final : public Value<Json::NUMBER, int> {
     double number_value() const override { return m_value; }
     int int_value() const override { return m_value; }
+    int64_t int64_value() const override { return static_cast<int64_t>(m_value); }
+    uint64_t uint64_value() const override { return static_cast<uint64_t>(m_value); }
     bool equals(const JsonValue * other) const override { return m_value == other->number_value(); }
     bool less(const JsonValue * other)   const override { return m_value <  other->number_value(); }
 public:
     explicit JsonInt(int value) : Value(value) {}
+};
+
+class JsonInt64 final : public Value<Json::NUMBER, int64_t> {
+    double number_value() const override { return static_cast<double>(m_value); }
+    int int_value() const override { return static_cast<int>(m_value); }
+    int64_t int64_value() const override { return m_value; }
+    uint64_t uint64_value() const override { return static_cast<uint64_t>(m_value); }
+    bool equals(const JsonValue * other) const override { return m_value == other->number_value(); }
+    bool less(const JsonValue * other)   const override { return m_value <  other->number_value(); }
+public:
+    explicit JsonInt64(int64_t value) : Value(value) {}
+};
+
+class JsonUInt64 final : public Value<Json::NUMBER, uint64_t> {
+    double number_value() const override { return static_cast<double>(m_value); }
+    int int_value() const override { return static_cast<int>(m_value); }
+    int64_t int64_value() const override { return static_cast<int64_t>(m_value); }
+    uint64_t uint64_value() const override { return m_value; }
+    bool equals(const JsonValue * other) const override { return m_value == other->number_value(); }
+    bool less(const JsonValue * other)   const override { return m_value <  other->number_value(); }
+public:
+    explicit JsonUInt64(uint64_t value) : Value(value) {}
 };
 
 class JsonBoolean final : public Value<Json::BOOL, bool> {
@@ -254,6 +293,8 @@ Json::Json() noexcept                  : m_ptr(statics().null) {}
 Json::Json(std::nullptr_t) noexcept    : m_ptr(statics().null) {}
 Json::Json(double value)               : m_ptr(make_shared<JsonDouble>(value)) {}
 Json::Json(int value)                  : m_ptr(make_shared<JsonInt>(value)) {}
+Json::Json(int64_t value)              : m_ptr(make_shared<JsonInt64>(value)) {}
+Json::Json(uint64_t value)             : m_ptr(make_shared<JsonUInt64>(value)) {}
 Json::Json(bool value)                 : m_ptr(value ? statics().t : statics().f) {}
 Json::Json(const string &value)        : m_ptr(make_shared<JsonString>(value)) {}
 Json::Json(string &&value)             : m_ptr(make_shared<JsonString>(move(value))) {}
@@ -270,6 +311,8 @@ Json::Json(Json::object &&values)      : m_ptr(make_shared<JsonObject>(move(valu
 Json::Type Json::type()                           const { return m_ptr->type();         }
 double Json::number_value()                       const { return m_ptr->number_value(); }
 int Json::int_value()                             const { return m_ptr->int_value();    }
+int64_t Json::int64_value()                       const { return m_ptr->int64_value();  }
+uint64_t Json::uint64_value()                     const { return m_ptr->uint64_value(); }
 bool Json::bool_value()                           const { return m_ptr->bool_value();   }
 const string & Json::string_value()               const { return m_ptr->string_value(); }
 const vector<Json> & Json::array_items()          const { return m_ptr->array_items();  }
@@ -279,6 +322,8 @@ const Json & Json::operator[] (const string &key) const { return (*m_ptr)[key]; 
 
 double                    JsonValue::number_value()              const { return 0; }
 int                       JsonValue::int_value()                 const { return 0; }
+int64_t                   JsonValue::int64_value()               const { return 0; }
+uint64_t                  JsonValue::uint64_value()              const { return 0; }
 bool                      JsonValue::bool_value()                const { return false; }
 const string &            JsonValue::string_value()              const { return statics().empty_string; }
 const vector<Json> &      JsonValue::array_items()               const { return statics().empty_vector; }
@@ -589,9 +634,38 @@ struct JsonParser final {
             return fail("invalid " + esc(str[i]) + " in number");
         }
 
-        if (str[i] != '.' && str[i] != 'e' && str[i] != 'E'
-                && (i - start_pos) <= static_cast<size_t>(std::numeric_limits<int>::digits10)) {
-            return std::atoi(str.c_str() + start_pos);
+        if (str[i] != '.' && str[i] != 'e' && str[i] != 'E') {
+            int digitNum = i - start_pos;
+            int maxSignedIntDigitNum = std::ceil(std::numeric_limits<int>::digits * std::log10(2)) + 1;
+            int maxSignedInt64DigitNum = std::ceil(std::numeric_limits<int64_t>::digits * std::log10(2)) + 1;
+            int maxUInt64DigitNum = std::ceil(std::numeric_limits<uint64_t>::digits * std::log10(2));
+
+            if (*(str.c_str() + start_pos) == '-') {
+                // signed value
+
+                if (digitNum <= maxSignedInt64DigitNum) {
+                    int64_t value = std::atoll(str.c_str() + start_pos);
+                    if (INT_MIN <= value && value <= 0) {
+                        // JsonInt
+                        return static_cast<int>(value);
+                    }
+                    // JsonInt64
+                    return value;
+                }
+            } else {
+                // unsigned value
+
+                if (digitNum <= maxUInt64DigitNum) {
+                    // JsonUInt64
+                    uint64_t value = std::strtoull(str.c_str() + start_pos, 0, 10);
+                    if (value <= INT_MAX) {
+                        // JsonInt
+                        return static_cast<int>(value);
+                    }
+                    // JsonUInt64
+                    return value;
+                }
+            }
         }
 
         // Decimal part

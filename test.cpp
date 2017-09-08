@@ -245,6 +245,22 @@ JSON11_TEST_CASE(json11_test) {
     std::string points_json = Json(points).dump();
     std::cout << "points_json: " << points_json << "\n";
     JSON11_TEST_ASSERT(points_json == "[[1, 2], [10, 20], [100, 200]]");
+
+    const std::string int64JsonStr = R"({
+"int64_max":  9223372036854775807,
+"int64_min": -9223372036854775808,
+"uint64_max": 18446744073709551615,
+"uint64_min": 0
+})";
+
+    err.empty();
+    Json int64Json = Json::parse(int64JsonStr, err);
+    std::cout << "int64Json: " << int64Json.dump() << "\n";
+    JSON11_TEST_ASSERT(int64Json.dump() == "{\"int64_max\": 9223372036854775807, \"int64_min\": -9223372036854775808, \"uint64_max\": 18446744073709551615, \"uint64_min\": 0}");
+    JSON11_TEST_ASSERT(int64Json["int64_max"].int64_value() == INT64_MAX);
+    JSON11_TEST_ASSERT(int64Json["int64_min"].int64_value() == INT64_MIN);
+    JSON11_TEST_ASSERT(int64Json["uint64_max"].uint64_value() == UINT64_MAX);
+    JSON11_TEST_ASSERT(int64Json["uint64_min"].uint64_value() == 0);
 }
 
 #if JSON11_TEST_STANDALONE_MAIN
