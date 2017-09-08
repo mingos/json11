@@ -611,6 +611,20 @@ struct JsonParser final {
         }
     }
 
+    int64_t strToInt64(const std::string& str) {
+        std::istringstream in(str);
+        int64_t v = 0;
+        in >> v;
+        return v;
+    }
+
+    uint64_t strToUInt64(const std::string& str) {
+        std::istringstream in(str);
+        uint64_t v = 0;
+        in >> v;
+        return v;
+    }
+
     /* parse_number()
      *
      * Parse a double.
@@ -644,7 +658,7 @@ struct JsonParser final {
                 // signed value
 
                 if (digitNum <= maxSignedInt64DigitNum) {
-                    int64_t value = std::atoll(str.c_str() + start_pos);
+                    int64_t value = strToInt64(str.c_str() + start_pos);
                     if (INT_MIN <= value && value <= 0) {
                         // JsonInt
                         return static_cast<int>(value);
@@ -657,7 +671,7 @@ struct JsonParser final {
 
                 if (digitNum <= maxUInt64DigitNum) {
                     // JsonUInt64
-                    uint64_t value = std::strtoull(str.c_str() + start_pos, 0, 10);
+                    uint64_t value = strToUInt64(str.c_str() + start_pos);
                     if (value <= INT_MAX) {
                         // JsonInt
                         return static_cast<int>(value);
